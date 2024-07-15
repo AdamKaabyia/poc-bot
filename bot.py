@@ -81,7 +81,7 @@ async def menu(update: telegram.Update, context: CallbackContext) -> None:
         reply_markup=FIRST_MENU_MARKUP
     )
 
-def button_tap(update: telegram.Update, context: CallbackContext) -> None:
+async def button_tap(update: telegram.Update, context: CallbackContext) -> None:
     """Handles inline button taps."""
     query = update.callback_query
     data = query.data
@@ -95,8 +95,8 @@ def button_tap(update: telegram.Update, context: CallbackContext) -> None:
         text = FIRST_MENU
         markup = FIRST_MENU_MARKUP
 
-    query.answer()
-    query.edit_message_text(
+    await query.answer()
+    await query.edit_message_text(
         text=text,
         parse_mode=ParseMode.HTML,
         reply_markup=markup
