@@ -1,15 +1,12 @@
 import logging
 import os
+import openai
 from dotenv import load_dotenv
 import telegram
 from telegram.constants import ParseMode
 from telegram.ext import Updater, CommandHandler, MessageHandler, filters, CallbackContext, CallbackQueryHandler, ApplicationBuilder
+from api_key_test import get_openai_response
 
-# Load environment variables from .env file
-load_dotenv()
-token = os.getenv('TOKEN')
-
-print(token)
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -39,24 +36,38 @@ def error(update: telegram.Update, context: CallbackContext) -> None:
     """Log Errors caused by Updates."""
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 async def start(update: telegram.Update, context: CallbackContext):
-    await update.message.reply_text('thw commands are:\n'
+    await update.message.reply_text('the commands are:\n'
                                     '/scream\n'
                                     '/start\n'
                                     '/whisper\n'
                                     '/menu\n')
     pass
 
-def echo(update: telegram.Update, context: CallbackContext) -> None:
-    """Echo the user message."""
-    logger.info(f'{update.message.from_user.first_name} wrote {update.message.text}')
-    if screaming and update.message.text:
-        context.bot.send_message(
-            chat_id=update.message.chat_id,
-            text=update.message.text.upper(),
-            entities=update.message.entities
+async def get_openai_response(prompt):
+    """Get a response from OpenAI based on the user prompt."""
+    try:
+        response = openai.Completion.create(
+            engine="text-davinci-003",  # Choose the model you want to use
+            prompt=prompt,
+            max_tokens=150
         )
-    else:
-        update.message.copy(update.message.chat_id)
+        return response.choices[0].text.strip()
+    except Exception as e:
+        logger.error(f"Error getting response from OpenAI: {e}")
+        return "Sorry, I couldn't process your request at the moment."
+
+async def echo(update: telegram.Update, context: CallbackContext) -> None:
+    """Echo the user message."""
+    user_message = update.message.text
+    logger.info(f'{update.message.from_user.first_name} wrote {user_message}')
+
+    #response = await get_openai_response(user_message)
+    #response = get_openai_response(user_message)
+    response=user_message
+    if screaming:
+        response = response.upper()
+
+    await update.message.reply_text(response)
 
 async def scream(update: telegram.Update, context: CallbackContext) -> None:
     """Activates screaming mode."""
@@ -82,7 +93,6 @@ async def menu(update: telegram.Update, context: CallbackContext) -> None:
     )
 
 async def button_tap(update: telegram.Update, context: CallbackContext) -> None:
-    """Handles inline button taps."""
     query = update.callback_query
     data = query.data
     text = ''
@@ -102,8 +112,13 @@ async def button_tap(update: telegram.Update, context: CallbackContext) -> None:
         reply_markup=markup
     )
 
+
 def main() -> None:
-    """Start the bot."""
+    load_dotenv()
+    token = os.getenv('TOKEN')
+    openai_api_key = os.getenv('OPENAI_KEY')
+    openai.api_key = openai_api_key
+    print(token, openai_api_key)
     if not token:
         logger.error("TELEGRAM_TOKEN environment variable not set")
         return
